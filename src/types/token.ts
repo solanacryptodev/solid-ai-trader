@@ -308,6 +308,16 @@ export type JupiterCategory = 'toporganicscore' | 'toptraded' | 'toptrending';
 export type JupiterInterval = '5m' | '1h' | '6h' | '24h';
 
 /**
+ * Token Shield warning from Jupiter ultra API
+ */
+export interface TokenShieldWarning {
+    type: string;
+    message: string;
+    severity: 'info' | 'warning' | 'critical';
+    source: string;
+}
+
+/**
  * Token candidate from scanner with analysis data
  * address can be either a string (mint address) or full Jupiter token object
  */
@@ -324,6 +334,7 @@ export interface TokenCandidate {
     status?: 'watching' | 'consolidating' | 'pumping' | 'exited';
     signals?: string[];
     verdict?: 'healthy' | 'risky' | 'red-flag';
+    warnings?: TokenShieldWarning[];
 }
 
 /**
@@ -333,4 +344,70 @@ export interface TokenDiscoveryResponse {
     success: boolean;
     token?: EligibleToken;
     error?: string;
+}
+
+// ============================================
+// Jupiter Price API Types (v3)
+// ============================================
+
+/**
+ * Last swapped price info from Jupiter price API
+ */
+export interface LastSwappedPrice {
+    lastJupiterSellAt: number;
+    lastJupiterSellPrice: string;
+    lastJupiterBuyAt: number;
+    lastJupiterBuyPrice: string;
+}
+
+/**
+ * Quoted price info from Jupiter price API
+ */
+export interface QuotedPrice {
+    buyPrice: string;
+    buyAt: number;
+    sellPrice: string;
+    sellAt: number;
+}
+
+/**
+ * Depth info with price impact ratios at different levels
+ */
+export interface DepthInfo {
+    depth: {
+        '10': number;
+        '100': number;
+        '1000': number;
+    };
+}
+
+/**
+ * Extra info containing confidence level and pricing details
+ */
+export interface JupiterTokenPriceExtraInfo {
+    lastSwappedPrice?: LastSwappedPrice;
+    quotedPrice?: QuotedPrice;
+    confidenceLevel?: 'high' | 'medium' | 'low';
+    depth?: {
+        buyPriceImpactRatio: DepthInfo;
+        sellPriceImpactRatio: DepthInfo;
+    };
+}
+
+/**
+ * Individual token price data from Jupiter price API v3
+ */
+export interface JupiterTokenPriceData {
+    id: string;
+    type: string;
+    price: string;
+    extraInfo?: JupiterTokenPriceExtraInfo;
+}
+
+/**
+ * Full response from Jupiter price API v3
+ */
+export interface JupiterTokenPrice {
+    data: Record<string, JupiterTokenPriceData>;
+    timeTaken: number;
 }

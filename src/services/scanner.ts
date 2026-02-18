@@ -120,14 +120,17 @@ export class TokenScanner {
         try {
             // If we already have the full token object, use it directly
             let jupiterInfo: JupiterTokenFull | null;
+            let tokenId: string;
 
             if (typeof tokenAddress === 'object' && tokenAddress !== null && 'id' in tokenAddress) {
                 // Already have the full Jupiter token object
                 jupiterInfo = tokenAddress as JupiterTokenFull;
+                tokenId = jupiterInfo.id;
                 // console.log("[Scanner] Using provided token data:", jupiterInfo.id);
             } else {
                 // It's a string address, need to fetch token info
                 const address = tokenAddress as string;
+                tokenId = address;
                 // console.log("[Scanner] Fetching token info for:", address);
                 jupiterInfo = await jupiter.getTokenInfo(address);
             }

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@langchain/core": "^1.1.24",
+    "@langchain/openai": "^1.2.7",
     "@langchain/tavily": "^1.2.0",
     "@solana-program/compute-budget": "^0.13.0",
     "@solana-program/memo": "^0.11.0",
@@ -16,10 +17,12 @@
     "@solana/kit": "^6.0.1",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
+    "@types/node": "^25.2.3",
     "deepagents": "^1.7.6",
     "langchain": "^1.2.24",
     "solid-js": "^1.9.5",
-    "vinxi": "^0.5.7"
+    "vinxi": "^0.5.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.7",

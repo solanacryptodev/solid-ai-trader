@@ -1,6 +1,11 @@
 import { For, createSignal, onMount, onCleanup, Show, createEffect } from "solid-js";
 import WatchlistModal from "./WatchlistModal";
 
+// Props interface for Watchlist
+interface WatchlistProps {
+  onAnalyze?: (token: WatchlistItem) => void;
+}
+
 // Full Jupiter token from API
 interface JupiterTokenFull {
   id: string;
@@ -11,6 +16,14 @@ interface JupiterTokenFull {
   liquidity?: number;
   usdPrice?: number;
   [key: string]: any;
+}
+
+// Token shield warning interface
+interface TokenShieldWarning {
+  type: string;
+  message: string;
+  severity: 'info' | 'warning' | 'critical';
+  source: string;
 }
 
 // Watchlist item interface
@@ -26,6 +39,7 @@ interface WatchlistItem {
   holders?: number;
   address: string;
   signals?: string[];
+  warnings?: TokenShieldWarning[];
 }
 
 // Token candidate response from API - address can be string or Jupiter token object
@@ -39,6 +53,7 @@ interface TokenCandidate {
   liquidity?: number;
   signals?: string[];
   verdict?: 'healthy' | 'risky' | 'red-flag';
+  warnings?: TokenShieldWarning[];
 }
 
 interface ApiResponse {
@@ -99,7 +114,7 @@ function updateBothSnapshots(tokenId: string, currentPrice: number) {
   getOrRotateSnapshot(tokenId, currentPrice, "1h");
 }
 
-export default function Watchlist() {
+export default function Watchlist(props: WatchlistProps) {
   const [items, setItems] = createSignal<WatchlistItem[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -187,6 +202,7 @@ export default function Watchlist() {
           holders: token.holders,
           address: tokenAddr,
           signals: token.signals,
+          warnings: token.warnings,
         };
       });
 
@@ -496,6 +512,7 @@ export default function Watchlist() {
             copied={copied()}
             shouldShowFallback={shouldShowFallback}
             handleImageError={handleImageError}
+            onAnalyze={props.onAnalyze}
           />
         )}
       </Show>

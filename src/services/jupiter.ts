@@ -4,7 +4,7 @@
  * Uses lite-api.jup.ag for all endpoints with API key
  */
 
-import type { JupiterCategory, JupiterInterval, TokenCandidate, JupiterTokenFull } from '../types/token';
+import type { JupiterCategory, JupiterInterval, TokenCandidate, JupiterTokenFull, JupiterTokenPrice, TokenShieldWarning } from '../types/token';
 
 const JUPITER_LITE_API_URL = "https://lite-api.jup.ag";
 const JUPITER_API_KEY = 'https://de65e03f-ab1e-476f-9c09-a525efd7ec21-api.jup.ag/tokens/v2/';
@@ -68,28 +68,23 @@ export class JupiterClient {
     }
 
     /**
-     * Get current prices for multiple tokens
+     * Calculate token confidence levels from Jupiter swap API
      */
-    async getPrices(tokenAddresses: string[]): Promise<Record<string, number>> {
+    async getTokenConfidence(tokenAddresses: string[]): Promise<JupiterTokenPrice | null> {
         try {
-            if (tokenAddresses.length === 0) return {};
+            if (tokenAddresses.length === 0) return null;
 
             const ids = tokenAddresses.join(',');
-            const response = await fetch(`https://price.jup.ag/v6/price?ids=${ids}`);
+            const response = await fetch(`${JUPITER_LITE_API_URL}/price/v2?ids=${ids}`);
+            console.log(response);
 
-            if (!response.ok) return {};
+            if (!response.ok) return null;
 
-            const data = await response.json();
-            const prices: Record<string, number> = {};
-
-            for (const [address, info] of Object.entries(data.data || {})) {
-                prices[address] = (info as any).price || 0;
-            }
-
-            return prices;
+            const data: JupiterTokenPrice = await response.json();
+            return data;
         } catch (error) {
-            console.error('Error fetching prices:', error);
-            return {};
+            console.error('Error fetching token prices:', error);
+            return null;
         }
     }
 
@@ -114,6 +109,38 @@ export class JupiterClient {
         } catch (error) {
             console.error("Error fetching token info:", error);
             return null;
+        }
+    }
+
+    /**
+     * Get token shield warnings from Jupiter Ultra API
+     * Filters tokens through security checks and returns warnings
+     */
+    async getTokenShield(mintAddress: string): Promise<TokenShieldWarning[]> {
+        try {
+            const headers: Record<string, string> = {};
+            headers['x-api-key'] = JUPITER_API_KEY;
+
+            const url = `${JUPITER_LITE_API_URL}/ultra/v1/shield?mints=${mintAddress}`;
+            const response = await fetch(url, { headers });
+
+            if (!response.ok) {
+                console.error(`Jupiter Shield API error: ${response.status}`);
+                return [];
+            }
+
+            const data = await response.json();
+            // console.log("[Jupiter Shield] Response:", data);
+
+            // Response structure: data.warnings[mintAddress] = [warning1, warning2, ...]
+            if (data && data.warnings && data.warnings[mintAddress]) {
+                return data.warnings[mintAddress] as TokenShieldWarning[];
+            }
+
+            return [];
+        } catch (error) {
+            console.error("Error fetching token shield:", error);
+            return [];
         }
     }
 }

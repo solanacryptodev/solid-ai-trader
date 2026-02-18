@@ -1,3 +1,5 @@
 {
-    "heliusRpcUrl": ""
+    "heliusRpcUrl": "",
+    "openAiApiKey": "",
+    "twitterBearerToken": ""
 }
