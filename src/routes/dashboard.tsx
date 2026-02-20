@@ -34,11 +34,11 @@ export default function Dashboard() {
   // Handle token analysis - add to potentials when user analyzes a token
   function handleAnalyzeToken(token: WatchlistItem) {
     const newPotential: PotentialToken = {
-      id: token.id,
-      name: token.name,
-      symbol: token.token,
-      icon: token.icon,
-      address: token.address,
+      id: token?.id || "",
+      name: token?.name || "",
+      symbol: token?.token || "",
+      icon: token?.icon || "",
+      address: token?.address || "",
     };
 
     // Only add if not already in the list

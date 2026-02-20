@@ -4,17 +4,18 @@
  * Uses server-side environment variables for API keys
  */
 
+import { SystemMessage, HumanMessage } from "langchain";
 import type { TokenInput, SocialAgentResult, TweetData, SentimentAnalysis } from "~/agent/types";
 
 /**
  * Get API keys from server-side environment
  */
 function getTwitterBearerToken(): string {
-    return process.env.TWITTER_BEARER_TOKEN || "";
+    return import.meta.env.VITE_TWITTER_BEARER_TOKEN || "";
 }
 
 function getOpenAIApiKey(): string {
-    return process.env.OPENAI_API_KEY || "";
+    return import.meta.env.VITE_OPENAI_API_KEY || "";
 }
 
 /**
@@ -30,7 +31,7 @@ async function searchTwitter(query: string, apiKey?: string): Promise<TweetData[
 
     try {
         const response = await fetch(
-            `https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=10&tweet.fields=created_at,public_metrics,author_id`,
+            `https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(query)}&max_results=30&tweet.fields=created_at,public_metrics,author_id`,
             {
                 headers: {
                     "Authorization": `Bearer ${bearerToken}`,
@@ -45,6 +46,7 @@ async function searchTwitter(query: string, apiKey?: string): Promise<TweetData[
         }
 
         const data = await response.json();
+        // console.log('twitter data', data.data);
 
         if (!data.data) {
             return getMockTweets(query);
@@ -110,6 +112,24 @@ function getMockTweets(query: string): TweetData[] {
 }
 
 /**
+ * Extract JSON from markdown code blocks (e.g., ```json {...} ```)
+ */
+function extractJsonFromMarkdown(content: string): string {
+    // Remove markdown code block fences (```json or ```)
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+        return jsonMatch[1].trim();
+    }
+    // If no code block, try to find JSON object directly
+    const jsonObjMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonObjMatch) {
+        return jsonObjMatch[0];
+    }
+    // Return original content if no pattern matches
+    return content.trim();
+}
+
+/**
  * Keyword-based sentiment analysis (works without LLM)
  */
 function keywordBasedSentiment(tweets: TweetData[]): SentimentAnalysis {
@@ -164,7 +184,7 @@ function keywordBasedSentiment(tweets: TweetData[]): SentimentAnalysis {
  * LLM-based sentiment analysis (if OpenAI key available)
  * Uses dynamic import to ensure LangChain stays server-side
  */
-async function analyzeWithLLM(tweets: TweetData[]): Promise<SentimentAnalysis> {
+async function analyzeWithLLM(tweets: TweetData[], token: TokenInput): Promise<SentimentAnalysis> {
     const apiKey = getOpenAIApiKey();
 
     if (!apiKey) {
@@ -175,12 +195,16 @@ async function analyzeWithLLM(tweets: TweetData[]): Promise<SentimentAnalysis> {
         // Dynamic import - only loads on server
         const { ChatOpenAI } = await import("@langchain/openai");
 
-        const model = new ChatOpenAI({
-            modelName: "gpt-4o",
-            temperature: 0.3,
-            maxTokens: 500,
-            openAIApiKey: apiKey,
-        });
+        const model = new ChatOpenAI(
+            {
+                modelName: "deepseek/deepseek-v3.2",
+                temperature: 0.3,
+                maxTokens: 500,
+                apiKey: apiKey,
+                configuration: {
+                    baseURL: "https://openrouter.ai/api/v1",
+                },
+            });
 
         const tweetTexts = tweets.map((t) => t.text).join("\n- ");
 
@@ -198,10 +222,15 @@ Tweets to analyze:
 
 Respond only with valid JSON.`;
 
-        const response = await model.invoke(prompt);
+        const response = await model.invoke([
+            new SystemMessage(prompt),
+            new HumanMessage(`Provide me with the sentiment analysis of the tweets for the ${token.name} token.`),
+        ]);
         const content = response.content as string;
+        // console.log('content', content);
 
-        const parsed = JSON.parse(content);
+        const parsed = JSON.parse(extractJsonFromMarkdown(content));
+
         return {
             score: parsed.score,
             label: parsed.label,
@@ -221,6 +250,7 @@ Respond only with valid JSON.`;
 export async function analyzeToken(token: TokenInput): Promise<SocialAgentResult> {
     try {
         const searchQuery = token.symbol ? `$${token.symbol} ${token.name}` : token.name;
+        console.log('searchQuery', searchQuery);
 
         // Search Twitter
         const tweets = await searchTwitter(searchQuery);
@@ -230,7 +260,7 @@ export async function analyzeToken(token: TokenInput): Promise<SocialAgentResult
         const hasOpenAI = !!getOpenAIApiKey();
 
         if (hasOpenAI) {
-            sentiment = await analyzeWithLLM(tweets);
+            sentiment = await analyzeWithLLM(tweets, token);
         } else {
             sentiment = keywordBasedSentiment(tweets);
         }
