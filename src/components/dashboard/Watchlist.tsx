@@ -1,5 +1,5 @@
 import { For, createSignal, onMount, onCleanup, Show, createEffect } from "solid-js";
-import WatchlistModal from "./WatchlistModal";
+import { useGlobalModal } from "~/libs/context/GlobalModalContext";
 
 // Props interface for Watchlist
 interface WatchlistProps {
@@ -115,6 +115,9 @@ function updateBothSnapshots(tokenId: string, currentPrice: number) {
 }
 
 export default function Watchlist(props: WatchlistProps) {
+  // Global modal context
+  const { openWatchlistModal, setOnAnalyze } = useGlobalModal();
+
   const [items, setItems] = createSignal<WatchlistItem[]>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -123,9 +126,6 @@ export default function Watchlist(props: WatchlistProps) {
   const [totalCount, setTotalCount] = createSignal(0);
   const [totalPages, setTotalPages] = createSignal(1);
   const [hasMore, setHasMore] = createSignal(false);
-  // Modal state
-  const [selectedToken, setSelectedToken] = createSignal<WatchlistItem | null>(null);
-  const [copied, setCopied] = createSignal(false);
   // Track image load status for fallback display
   const [imageStatus, setImageStatus] = createSignal<Map<string, { loaded: boolean; failed: boolean }>>(new Map());
   // Interval selection state (5m or 1h)
@@ -224,6 +224,11 @@ export default function Watchlist(props: WatchlistProps) {
   }
 
   onMount(() => {
+    // Set up the onAnalyze callback for the global modal
+    if (props.onAnalyze) {
+      setOnAnalyze(props.onAnalyze);
+    }
+
     // Initial fetch
     fetchTokens(1, selectedInterval());
 
@@ -322,31 +327,9 @@ export default function Watchlist(props: WatchlistProps) {
     }
   }
 
-  // Open modal for token details
+  // Open modal for token details using global context
   function openTokenModal(item: WatchlistItem) {
-    setSelectedToken(item);
-    setCopied(false);
-  }
-
-  // Close modal
-  function closeModal() {
-    setSelectedToken(null);
-    setCopied(false);
-  }
-
-  // Copy address to clipboard
-  async function copyAddress() {
-    const token = selectedToken();
-    if (token?.address) {
-      try {
-        await navigator.clipboard.writeText(token.address);
-        setCopied(true);
-        // Reset copied state after 2 seconds
-        setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error("Failed to copy address:", err);
-      }
-    }
+    openWatchlistModal(item);
   }
 
   return (
@@ -502,20 +485,6 @@ export default function Watchlist(props: WatchlistProps) {
         </div>
       </Show>
 
-      {/* Token Details Modal */}
-      <Show when={selectedToken()}>
-        {(token) => (
-          <WatchlistModal
-            token={token()}
-            onClose={closeModal}
-            onCopy={copyAddress}
-            copied={copied()}
-            shouldShowFallback={shouldShowFallback}
-            handleImageError={handleImageError}
-            onAnalyze={props.onAnalyze}
-          />
-        )}
-      </Show>
     </div>
   );
 }

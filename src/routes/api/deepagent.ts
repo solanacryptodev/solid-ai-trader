@@ -6,12 +6,15 @@
 
 import type { APIEvent } from "@solidjs/start/server";
 import type { TokenInput } from "~/agent/types";
+import { CompiledSubAgent } from "deepagents";
+import { createAgent } from "langchain";
+import { z } from "zod";
 
 /**
  * Get API key from environment (server-side)
  */
 function getApiKey(): string {
-    return process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || "";
+    return import.meta.env.VITE_OPENAI_API_KEY || "";
 }
 
 /**
@@ -69,7 +72,7 @@ async function getDeepAgent(): Promise<any> {
     const { DynamicTool } = await import("langchain");
 
     const model = new ChatOpenAI({
-        modelName: "gpt-4o",
+        modelName: "qwen/qwen3.5-397b-a17b",
         temperature: 0.3,
         openAIApiKey: apiKey,
     });
@@ -174,11 +177,39 @@ async function getDeepAgent(): Promise<any> {
         },
     ];
 
+    const socialModel = new ChatOpenAI(
+        {
+            modelName: "qwen/qwen3.5-397b-a17b",
+            temperature: 0.3,
+            maxTokens: 500,
+            apiKey: apiKey,
+            configuration: {
+                baseURL: "https://openrouter.ai/api/v1",
+            },
+        });
+
+    // return shape of data from analyzeWithLLM
+    const socialContextSchema = z.object({});
+
+    const socialAgent = createAgent({
+        name: "SocialAgent",
+        model: socialModel,
+        // prompt: "You are a specialized agent for data analysis...",
+        tools: [socialAnalysisTool],
+        contextSchema: socialContextSchema,
+    });
+
+    const socialSubAgent: CompiledSubAgent = {
+        name: "social-agent",
+        description: "Social agent for analyzing social media sentiment for tokens",
+        runnable: socialAgent,
+    };
+
     // Create the DeepAgent
     deepAgentInstance = createDeepAgent({
         model,
         tools: orchestratorTools,
-        subagents,
+        subagents: [socialSubAgent],
         systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
         name: "TradingOrchestrator",
     });

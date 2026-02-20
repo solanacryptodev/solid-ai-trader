@@ -107,17 +107,17 @@ export default function WatchlistModal(props: WatchlistModalProps) {
 
     return (
         <div
-            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             onClick={(e) => {
                 if (e.target === e.currentTarget) props.onClose();
             }}
         >
-            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <Show when={!props.shouldShowFallback(props.token.id, props.token.icon)} fallback={
                             <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                                {props.token.icon}
+                                {props.token.icon || "??"}
                             </div>
                         }>
                             <img

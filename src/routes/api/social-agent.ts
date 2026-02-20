@@ -48,8 +48,8 @@ export async function POST({ request }: APIEvent) {
  * GET handler - return API status
  */
 export async function GET({ request }: APIEvent) {
-    const hasTwitterToken = !!process.env.TWITTER_BEARER_TOKEN;
-    const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+    const hasTwitterToken = !!import.meta.env.VITE_TWITTER_BEARER_TOKEN;
+    const hasOpenAIKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
     return new Response(
         JSON.stringify({
