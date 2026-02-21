@@ -1,3 +1,10 @@
+// CRITICAL: Set process.env before any LangChain imports
+// LangChain middleware checks process.env.OPENAI_API_KEY directly
+const openAiKey = import.meta.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+if (openAiKey && !process.env.OPENAI_API_KEY) {
+    process.env.OPENAI_API_KEY = openAiKey;
+}
+
 /**
  * DeepAgent API Route
  * Server-side endpoint for DeepAgent orchestration
@@ -5,16 +12,20 @@
  */
 
 import type { APIEvent } from "@solidjs/start/server";
-import type { TokenInput } from "~/agent/types";
-import { CompiledSubAgent } from "deepagents";
+import type { TokenInput, SocialAgentResult } from "~/agent/types";
+import { CompiledSubAgent, SubAgent } from "deepagents";
 import { createAgent } from "langchain";
 import { z } from "zod";
+import { analyzeToken } from "~/server/agents/SocialAgent";
+import { SystemMessage, HumanMessage } from "langchain";
 
 /**
  * Get API key from environment (server-side)
+ * Checks both VITE_ prefixed (client) and server-only variables
  */
 function getApiKey(): string {
-    return import.meta.env.VITE_OPENAI_API_KEY || "";
+    // First try server-only env var (优先检查服务器专用环境变量)
+    return import.meta.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY || "";
 }
 
 /**
@@ -71,28 +82,66 @@ async function getDeepAgent(): Promise<any> {
     const { ChatOpenAI } = await import("@langchain/openai");
     const { DynamicTool } = await import("langchain");
 
-    const model = new ChatOpenAI({
-        modelName: "qwen/qwen3.5-397b-a17b",
-        temperature: 0.3,
-        openAIApiKey: apiKey,
+    const model = new ChatOpenAI(
+        {
+            modelName: "qwen/qwen3.5-397b-a17b",
+            temperature: 0.3,
+            maxTokens: 500,
+            apiKey: apiKey,
+            configuration: {
+                baseURL: "https://openrouter.ai/api/v1",
+            },
+        });
+
+    // Zod schema for token input validation
+    const TokenInputSchema = z.object({
+        address: z.string().optional(),
+        symbol: z.string().optional(),
+        name: z.string().optional(),
     });
 
-    // Create placeholder tools
+    // Create the Social Agent tool that wraps analyzeToken from SocialAgent.ts
     const socialAnalysisTool = new DynamicTool({
         name: "analyze_social",
-        description: "Analyze social media sentiment for a cryptocurrency token.",
-        func: async (): Promise<string> => {
-            return JSON.stringify({
-                agentName: "SocialAgent",
-                success: true,
-                timestamp: Date.now(),
-                sentiment: {
-                    score: 0.5,
-                    label: "bullish",
-                    confidence: 0.7,
-                    keyThemes: ["momentum", "community"],
-                },
-            });
+        description: "Analyze social media sentiment for a cryptocurrency token. Input: JSON object with address, symbol, and name of the token.",
+        func: async (input: string): Promise<string> => {
+            try {
+                // console.log("Social analysis tool input:", input);
+                // Parse and validate input using Zod
+                const parsedInput = JSON.parse(input);
+                const tokenData = TokenInputSchema.parse(parsedInput);
+
+                // Create TokenInput object
+                const token: TokenInput = {
+                    address: tokenData.address || "",
+                    symbol: tokenData.symbol || "",
+                    name: tokenData.name || "",
+                };
+
+                // Call the actual SocialAgent analyzeToken function
+                // console.log("Social analysis tool input:", token);
+                const result: SocialAgentResult = await analyzeToken(token);
+                // console.log("Social analysis tool result:", result);
+
+                return JSON.stringify(result);
+            } catch (error) {
+                console.error("Social analysis tool error:", error);
+                return JSON.stringify({
+                    agentName: "SocialAgent",
+                    success: false,
+                    timestamp: Date.now(),
+                    error: error instanceof Error ? error.message : "Analysis failed",
+                    tweets: [],
+                    sentiment: {
+                        score: 0,
+                        label: "neutral",
+                        confidence: 0,
+                        keyThemes: [],
+                    },
+                    mentions: 0,
+                    trending: false,
+                });
+            }
         },
     });
 
@@ -167,16 +216,6 @@ async function getDeepAgent(): Promise<any> {
         executionAnalysisTool,
     ];
 
-    // Define sub-agents
-    const subagents = [
-        {
-            name: "social",
-            description: "Analyzes social media sentiment for tokens",
-            systemPrompt: SOCIAL_AGENT_PROMPT,
-            tools: [socialAnalysisTool],
-        },
-    ];
-
     const socialModel = new ChatOpenAI(
         {
             modelName: "qwen/qwen3.5-397b-a17b",
@@ -188,30 +227,21 @@ async function getDeepAgent(): Promise<any> {
             },
         });
 
-    // return shape of data from analyzeWithLLM
-    const socialContextSchema = z.object({});
 
-    const socialAgent = createAgent({
-        name: "SocialAgent",
+    const socialSubAgent: SubAgent = ({
+        name: "Social Agent",
         model: socialModel,
-        // prompt: "You are a specialized agent for data analysis...",
-        tools: [socialAnalysisTool],
-        contextSchema: socialContextSchema,
-    });
-
-    const socialSubAgent: CompiledSubAgent = {
-        name: "social-agent",
+        systemPrompt: SOCIAL_AGENT_PROMPT,
         description: "Social agent for analyzing social media sentiment for tokens",
-        runnable: socialAgent,
-    };
+        tools: [socialAnalysisTool],
+    });
 
     // Create the DeepAgent
     deepAgentInstance = createDeepAgent({
         model,
-        tools: orchestratorTools,
         subagents: [socialSubAgent],
         systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
-        name: "TradingOrchestrator",
+        name: "Trading Orchestrator",
     });
 
     return deepAgentInstance;
@@ -250,19 +280,82 @@ export async function POST({ request }: APIEvent) {
         }
 
         const agent = await getDeepAgent();
+        //console.log("DeepAgent initialized", agent);
 
         const prompt = `Analyze the token ${token.symbol} (${token.name}) at address ${token.address || 'unknown'}.
-Run analysis using these agents: ${agents.join(", ")}.
-Provide a final trading recommendation with confidence score.`;
+            Run analysis using these agents: ${agents.join(", ")}.
+            When you get the results from the SocialAgent, provide a JSON response with the following structure:
+            {
+                "score": number between -1 (very bearish) and 1 (very bullish),
+                "label": "bullish" | "bearish" | "neutral",
+                "confidence": number between 0 and 1,
+                "keyThemes": array of strings (main topics discussed, max 5)
+            }
+            Respond only with valid JSON.`;
 
+        // Use object format to properly initialize middleware state (required for todoListMiddleware)
         const response = await agent.invoke({
-            messages: [{ role: "user", content: prompt }],
+            messages: [
+                new SystemMessage(prompt),
+                new HumanMessage(`Provide me with the social agent analysis for the ${token.name} token.`),
+            ],
+            todos: [], // Initialize empty todos for the todoListMiddleware
         });
+        // console.log("DeepAgent response", response);
+
+        // Extract the SocialAgent result from the DeepAgent response
+        // The tool returns the full SocialAgentResult structure
+        let socialResult: SocialAgentResult | null = null;
+
+        try {
+            // Get the messages array from the response
+            const messages = response.messages || [];
+
+            // Find the last AI message (which contains the final response)
+            const lastAIMessage = [...messages].reverse().find(
+                (msg: any) => msg._type === 'ai' || msg.type === 'ai' || msg.constructor?.name === 'AIMessage'
+            );
+
+            if (lastAIMessage && lastAIMessage.content) {
+                let content = lastAIMessage.content;
+
+                // Handle markdown code blocks (```json ... ```)
+                const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/);
+                if (jsonMatch && jsonMatch[1]) {
+                    content = jsonMatch[1];
+                }
+
+                // Parse the JSON content
+                const parsedData = JSON.parse(content.trim());
+
+                // Transform to SocialAgentResult format
+                socialResult = {
+                    agentName: "SocialAgent",
+                    success: true,
+                    timestamp: Date.now(),
+                    tweets: [],
+                    sentiment: {
+                        score: parsedData.score ?? 0,
+                        label: parsedData.label ?? "neutral",
+                        confidence: parsedData.confidence ?? 0,
+                        keyThemes: parsedData.keyThemes ?? [],
+                    },
+                    mentions: 0,
+                    trending: false,
+                };
+
+                console.log('Parsed social result:', socialResult);
+            }
+        } catch (e) {
+            console.error('Failed to extract social result:', e);
+        }
 
         return new Response(
             JSON.stringify({
                 success: true,
-                response: response,
+                results: {
+                    social: socialResult,
+                },
                 token,
                 agents,
             }),
