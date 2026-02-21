@@ -1,38 +1,6 @@
 import { Show, createSignal, For } from "solid-js";
 import type { SocialAgentResult } from "~/agent/types";
-
-// Token shield warning interface
-interface TokenShieldWarning {
-    type: string;
-    message: string;
-    severity: 'info' | 'warning' | 'critical';
-    source: string;
-}
-
-// Watchlist item interface
-interface WatchlistItem {
-    id: string;
-    name: string;
-    token: string;
-    icon: string;
-    price: string;
-    change: string;
-    changeColor: string;
-    score?: number;
-    holders?: number;
-    address: string;
-    warnings?: TokenShieldWarning[];
-}
-
-interface WatchlistModalProps {
-    token: WatchlistItem;
-    onClose: () => void;
-    onCopy: () => void;
-    copied: boolean;
-    shouldShowFallback: (id: string, icon: string) => boolean;
-    handleImageError: (id: string) => void;
-    onAnalyze?: (token: WatchlistItem) => void;
-}
+import { WatchlistModalProps } from "~/libs/interfaces"
 
 function formatHolders(holders?: number): string {
     if (!holders) return "-";
@@ -63,8 +31,8 @@ export default function WatchlistModal(props: WatchlistModalProps) {
         setAnalysisResult(null);
 
         try {
-            // Call the server-side API endpoint
-            const response = await fetch("/api/social-agent", {
+            // Call the server-side DeepAgent API endpoint (Orchestrator)
+            const response = await fetch("/api/deepagent", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -75,6 +43,7 @@ export default function WatchlistModal(props: WatchlistModalProps) {
                         symbol: props.token.token,
                         name: props.token.name,
                     },
+                    agents: ["social"],
                 }),
             });
 
@@ -84,7 +53,56 @@ export default function WatchlistModal(props: WatchlistModalProps) {
                 throw new Error(data.error || "Analysis failed");
             }
 
-            setAnalysisResult(data);
+            // Extract the social agent result from the orchestrator response
+            // DeepAgent returns results in various structures, try multiple paths
+            let socialResult: any = null;
+
+            // Try various extraction paths to find the social agent data
+            socialResult = data.results?.social;
+            if (!socialResult) socialResult = data.response?.results?.social;
+            if (!socialResult) socialResult = data.response?.social;
+            if (!socialResult) socialResult = data.social;
+
+            // If the result is a string (JSON stringified), parse it
+            if (typeof socialResult === 'string') {
+                try {
+                    socialResult = JSON.parse(socialResult);
+                } catch (e) {
+                    console.error('Failed to parse social result string:', e);
+                }
+            }
+
+            // If still no result, try to find it in the DeepAgent messages/tool_calls
+            if (!socialResult && data.response) {
+                const responseStr = JSON.stringify(data.response);
+                const match = responseStr.match(/"sentiment"\s*:\s*\{/);
+                if (match) {
+                    // Try to extract the social result from the response
+                    try {
+                        const parsed = JSON.parse(responseStr);
+                        // Look for any object with sentiment property
+                        const findSocialResult = (obj: any): any => {
+                            if (!obj || typeof obj !== 'object') return null;
+                            if (obj.sentiment && obj.tweets) return obj;
+                            for (const key of Object.keys(obj)) {
+                                const found = findSocialResult(obj[key]);
+                                if (found) return found;
+                            }
+                            return null;
+                        };
+                        socialResult = findSocialResult(parsed);
+                    } catch (e) {
+                        console.error('Failed to extract social result from response:', e);
+                    }
+                }
+            }
+
+            if (socialResult) {
+                setAnalysisResult(socialResult);
+            } else {
+                // Fallback: if no structured result, try to use the raw response
+                setAnalysisResult(data.results || data.response || data);
+            }
 
             // Also notify parent component if callback provided
             if (props.onAnalyze) {
@@ -253,8 +271,8 @@ export default function WatchlistModal(props: WatchlistModalProps) {
                                 {/* Sentiment */}
                                 <div class="flex items-center justify-between">
                                     <div class="text-slate-400 text-sm">Sentiment</div>
-                                    <div class={`font-semibold capitalize ${getSentimentColor(result().sentiment.label)}`}>
-                                        {result().sentiment.label}
+                                    <div class={`font-semibold capitalize ${getSentimentColor(result().sentiment?.label ?? "")}`}>
+                                        {result().sentiment?.label}
                                     </div>
                                 </div>
 
@@ -268,16 +286,16 @@ export default function WatchlistModal(props: WatchlistModalProps) {
                                 <div class="flex items-center justify-between">
                                     <div class="text-slate-400 text-sm">Confidence</div>
                                     <div class="text-white font-semibold">
-                                        {Math.round(result().sentiment.confidence * 100)}%
+                                        {Math.round(result().sentiment?.confidence * 100)}%
                                     </div>
                                 </div>
 
                                 {/* Key Themes */}
-                                <Show when={result().sentiment.keyThemes.length > 0}>
+                                <Show when={result().sentiment?.keyThemes?.length > 0}>
                                     <div>
                                         <div class="text-slate-400 text-xs mb-2">Key Themes</div>
                                         <div class="flex flex-wrap gap-1">
-                                            {result().sentiment.keyThemes.map((theme) => (
+                                            {result().sentiment?.keyThemes?.map((theme) => (
                                                 <span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
                                                     {theme}
                                                 </span>
@@ -287,13 +305,13 @@ export default function WatchlistModal(props: WatchlistModalProps) {
                                 </Show>
 
                                 {/* Sample Tweet */}
-                                <Show when={result().tweets.length > 0}>
+                                <Show when={result().tweets?.length > 0}>
                                     <div>
                                         <div class="text-slate-400 text-xs mb-2">Recent Tweet</div>
                                         <div class="bg-slate-800 rounded-lg p-3">
-                                            <div class="text-white text-sm italic">"{result().tweets[0].text}"</div>
+                                            <div class="text-white text-sm italic">"{result().tweets[0]?.text}"</div>
                                             <div class="text-slate-500 text-xs mt-2">
-                                                by @{result().tweets[0].author} · {result().tweets[0].likes} likes
+                                                by @{result().tweets[0]?.author} · {result().tweets[0]?.likes} likes
                                             </div>
                                         </div>
                                     </div>

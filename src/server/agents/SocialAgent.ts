@@ -1,3 +1,10 @@
+// CRITICAL: Set process.env before any LangChain imports
+// LangChain middleware checks process.env.OPENAI_API_KEY directly
+const openAiKey = import.meta.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+if (openAiKey && !process.env.OPENAI_API_KEY) {
+    process.env.OPENAI_API_KEY = openAiKey;
+}
+
 /**
  * Server-side SocialAgent
  * This file runs ONLY on the server - never bundled to client
@@ -15,7 +22,8 @@ function getTwitterBearerToken(): string {
 }
 
 function getOpenAIApiKey(): string {
-    return import.meta.env.VITE_OPENAI_API_KEY || "";
+    // First try server-only env var, then fall back to VITE_ prefixed (client)
+    return import.meta.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY || "";
 }
 
 /**
