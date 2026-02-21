@@ -13,8 +13,7 @@ if (openAiKey && !process.env.OPENAI_API_KEY) {
 
 import type { APIEvent } from "@solidjs/start/server";
 import type { TokenInput, SocialAgentResult } from "~/agent/types";
-import { CompiledSubAgent, SubAgent } from "deepagents";
-import { createAgent } from "langchain";
+import { SubAgent } from "deepagents";
 import { z } from "zod";
 import { analyzeToken } from "~/server/agents/SocialAgent";
 import { SystemMessage, HumanMessage } from "langchain";
@@ -61,14 +60,14 @@ Search Twitter for mentions and analyze the sentiment. Provide:
  * Lazy-initialized DeepAgent instance (server-side only)
  * Uses dynamic imports to prevent bundling to client
  */
-let deepAgentInstance: any = null;
+let orchestratorAgent: any = null;
 
 /**
  * Initialize the DeepAgent instance (server-side)
  */
 async function getDeepAgent(): Promise<any> {
-    if (deepAgentInstance) {
-        return deepAgentInstance;
+    if (orchestratorAgent) {
+        return orchestratorAgent;
     }
 
     const apiKey = getApiKey();
@@ -236,15 +235,15 @@ async function getDeepAgent(): Promise<any> {
         tools: [socialAnalysisTool],
     });
 
-    // Create the DeepAgent
-    deepAgentInstance = createDeepAgent({
+    // Create the Orchestrator Agent
+    orchestratorAgent = createDeepAgent({
         model,
         subagents: [socialSubAgent],
         systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
         name: "Trading Orchestrator",
     });
 
-    return deepAgentInstance;
+    return orchestratorAgent;
 }
 
 /**
