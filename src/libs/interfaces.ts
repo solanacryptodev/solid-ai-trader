@@ -73,3 +73,118 @@ export interface WatchlistModalProps {
   handleImageError: (id: string) => void;
   onAnalyze?: (token: WatchlistItem) => void;
 }
+
+// ── Price Store Types ────────────────────────────────────────────────────────
+
+export interface PriceSample {
+  price: number;
+  timestamp: number;
+  liquidity?: number;
+  priceChange24h?: number;
+}
+
+export interface Candle {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  timestamp: number;
+}
+
+export type SmoothingType = "EMA" | "SMA";
+
+export interface RSIResult {
+  rsi: number;
+  signal: "oversold" | "overbought" | "neutral";
+  smoothingLine: number | null;
+  crossover: "above_signal" | "below_signal" | null;
+  length: number;
+  smoothingLength: number;
+  smoothingType: SmoothingType;
+  insufficientData: boolean;
+  samplesHave: number;
+  samplesNeed: number;
+}
+
+export interface QuantileForecast {
+  low: number;
+  median: number;
+  high: number;
+}
+
+export interface ChronosForecastResponse {
+  token: string | null;
+  current_price: number;
+  forecasts: QuantileForecast[];
+  direction: "bullish" | "bearish" | "neutral";
+  confidence: number;
+  pct_change: number;
+  covariates_used: string[];
+  summary: string;
+}
+
+export interface TokenState {
+  mintAddress: string;
+  samples: PriceSample[];
+  candles: Candle[];
+  currentCandle: Partial<Candle> & { open?: number; high?: number; low?: number };
+  candleOpenTime: number;
+  rsi: RSIResult | null;
+  forecast: ChronosForecastResponse | null;
+  lastUpdated: number;
+  label?: string;
+}
+
+export interface QuantileForecast {
+  low: number;
+  median: number;
+  high: number;
+}
+
+export interface ChronosForecastResponse {
+  token: string | null;
+  current_price: number;
+  forecasts: QuantileForecast[];
+  direction: "bullish" | "bearish" | "neutral";
+  confidence: number;
+  pct_change: number; // median % change vs current price
+  covariates_used: string[]; // which covariates Chronos-2 received
+  summary: string;
+}
+
+export interface ChronosInput {
+  prices: number[];
+  rsi_history?: number[]; // past covariate
+  liquidity_history?: number[]; // past covariate
+  volume_history?: number[]; // past covariate
+  buy_pressure?: number[]; // past covariate
+  prediction_length?: number;
+  token?: string;
+}
+
+export interface PriceSample {
+  price: number;
+  timestamp: number;
+  liquidity?: number;
+  priceChange24h?: number;
+}
+
+export interface Candle {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  timestamp: number; // candle open time
+}
+
+export interface TokenState {
+  mintAddress: string;
+  samples: PriceSample[];
+  candles: Candle[];
+  currentCandle: Partial<Candle> & { open?: number; high?: number; low?: number };
+  candleOpenTime: number;
+  rsi: RSIResult | null;
+  forecast: ChronosForecastResponse | null;
+  lastUpdated: number;
+  label?: string;
+}

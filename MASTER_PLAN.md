@@ -33,16 +33,17 @@
 - Basic filter using Jupiter's `/recent` API
 - Fetching tokens from Solana network
 - Foundation for token discovery
+- Basic Social Media analysis using Twitter API
+- Initial Implementation of LangChain's DeepAgent architecture
 
 ### What We're Building Next
-- Agentic System for streaming selected token data to a team of agents using Langchain
-- Establish MongoDB schema for tracking tokens that pass agentic filters, including social filters and Dexscreener
+- Reference IMPLEMENTATION.md for the full implementation plan
 
 ### Next Steps (Phased Approach)
-1. **Phase 1 (Week 1-2):** Filter system + manual trading + data collection
-2. **Phase 2 (Week 3-4):** Pattern detection + scoring system + alerts
-3. **Phase 3 (Month 2):** Chronos ML model integration + semi-automation
-4. **Phase 4 (Month 3+):** Full automation with oversight
+1. **Phase 1 (Week 1-2):** Filter system + manual trading + data collection (partially complete minus manual trading)
+2. **Phase 2 (Week 3-4):** Pattern detection + scoring system + alerts (incomplete)
+3. **Phase 3 (Month 2):** Chronos ML model integration + semi-automation (incomplete)
+4. **Phase 4 (Month 3+):** Full automation with oversight (incomplete)
 
 ---
 

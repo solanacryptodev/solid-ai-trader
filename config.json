@@ -1,5 +1,6 @@
 {
     "heliusRpcUrl": "",
     "openAiApiKey": "",
-    "twitterBearerToken": ""
+    "twitterBearerToken": "",
+    "liteJupiterApiKey": "https://lite-api.jup.ag/price/v3"
 }
