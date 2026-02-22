@@ -26,13 +26,13 @@ export async function getForecast(input: ChronosInput): Promise<ChronosForecastR
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            console.error("[Chronos-2] Forecast failed:", err);
+            console.error("[Chronos-2-small] Forecast failed:", err);
             return null;
         }
 
         return await res.json() as ChronosForecastResponse;
     } catch (err) {
-        console.error("[Chronos-2] Request error:", err);
+        console.error("[Chronos-2-small] Request error:", err);
         return null;
     }
 }
@@ -41,7 +41,7 @@ export async function isChronosHealthy(): Promise<boolean> {
     try {
         const res = await fetch(`${CHRONOS_URL}/health`, { signal: AbortSignal.timeout(3_000) });
         const data = await res.json();
-        return data.status === "ok" && data.model_loaded === true && data.model === "chronos-2";
+        return data.status === "ok" && data.model_loaded === true && data.model === "chronos-2-small";
     } catch {
         return false;
     }

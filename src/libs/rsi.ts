@@ -38,8 +38,6 @@ function calculateRSIValues(prices: number[], length: number): number[] {
         rsiValues.push(rsi);
     }
 
-    console.log("RSI Values:", rsiValues);
-
     return rsiValues;
 }
 
@@ -117,4 +115,15 @@ export function getFullRSI(
 export function getRSIHistory(prices: number[], length = 14, count = 50): number[] {
     const all = calculateRSIValues(prices, length);
     return all.slice(-count);
+}
+
+/** Returns RSI history padded with neutral values for clean chart rendering */
+export function getRSIHistoryForChart(
+    prices: number[],
+    length = 8,
+    neutralValue = 50.0
+): number[] {
+    const real = calculateRSIValues(prices, length);
+    const padding = new Array(prices.length - real.length).fill(neutralValue);
+    return [...padding, ...real];
 }

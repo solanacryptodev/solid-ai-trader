@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Chronos-2-small Forecast Test</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080c14; color: #e2e8f0; font-family: 'Courier New', monospace; padding: 24px; }
+    h1 { color: #f1f5f9; font-size: 18px; margin-bottom: 4px; }
+    .subtitle { color: #475569; font-size: 12px; margin-bottom: 24px; }
+    .charts { display: flex; flex-direction: column; gap: 16px; }
+    .chart-box { background: #0a1220; border: 1px solid #1e2a3a; border-radius: 12px; padding: 20px; }
+    .chart-title { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .stats { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat { background: #0a1220; border: 1px solid #1e2a3a; border-radius: 8px; padding: 12px 18px; }
+    .stat-label { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 18px; color: #f8fafc; margin-top: 4px; }
+    .bullish { color: #22c55e !important; }
+    .bearish { color: #ef4444 !important; }
+    .neutral { color: #94a3b8 !important; }
+    canvas { max-height: 300px; }
+  </style>
+</head>
+<body>
+  <h1>⚡ Chronos-2-small — Forecast Test Result</h1>
+  <p class="subtitle">Mock memecoin · 60 candles context · 3 candles forecast · Covariates: rsi, liquidity</p>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Current Price</div>
+      <div class="stat-value">$7.3700e-4</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Direction</div>
+      <div class="stat-value bearish">BEARISH</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Δ Median</div>
+      <div class="stat-value bullish">-14.39%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Confidence</div>
+      <div class="stat-value">82.7%</div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box">
+      <div class="chart-title">Price — History + Forecast vs Actual</div>
+      <canvas id="priceChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">RSI(8) — Context Window</div>
+      <canvas id="rsiChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const gridColor  = "#1e2a3a";
+    const tickColor  = "#475569";
+
+    // ── Price chart ──
+    new Chart(document.getElementById("priceChart"), {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "History",
+            data: [{x: 0, y: 0.00027},{x: 1, y: 0.000273},{x: 2, y: 0.000276},{x: 3, y: 0.000281},{x: 4, y: 0.000285},{x: 5, y: 0.000289},{x: 6, y: 0.000294},{x: 7, y: 0.000298},{x: 8, y: 0.000302},{x: 9, y: 0.000308},{x: 10, y: 0.000315},{x: 11, y: 0.000321},{x: 12, y: 0.000328},{x: 13, y: 0.000334},{x: 14, y: 0.000342},{x: 15, y: 0.000348},{x: 16, y: 0.000355},{x: 17, y: 0.000361},{x: 18, y: 0.000368},{x: 19, y: 0.000374},{x: 20, y: 0.000381},{x: 21, y: 0.000388},{x: 22, y: 0.000396},{x: 23, y: 0.000403},{x: 24, y: 0.000425},{x: 25, y: 0.000451},{x: 26, y: 0.000478},{x: 27, y: 0.000509},{x: 28, y: 0.000543},{x: 29, y: 0.000581},{x: 30, y: 0.000622},{x: 31, y: 0.000668},{x: 32, y: 0.000718},{x: 33, y: 0.000773},{x: 34, y: 0.000835},{x: 35, y: 0.000901},{x: 36, y: 0.000972},{x: 37, y: 0.001051},{x: 38, y: 0.001136},{x: 39, y: 0.001228},{x: 40, y: 0.001327},{x: 41, y: 0.001434},{x: 42, y: 0.001548},{x: 43, y: 0.001671},{x: 44, y: 0.001589},{x: 45, y: 0.00151},{x: 46, y: 0.001435},{x: 47, y: 0.001363},{x: 48, y: 0.001295},{x: 49, y: 0.00123},{x: 50, y: 0.001169},{x: 51, y: 0.00111},{x: 52, y: 0.001055},{x: 53, y: 0.001002},{x: 54, y: 0.000952},{x: 55, y: 0.000905},{x: 56, y: 0.000859},{x: 57, y: 0.000816},{x: 58, y: 0.000776},{x: 59, y: 0.000737}],
+            borderColor: "#3b82f6",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+          },
+          {
+            label: "Median forecast",
+            data: [{x: 60, y: 0.0007217182428576052},{x: 61, y: 0.0006779415998607874},{x: 62, y: 0.000630926457233727}],
+            borderColor: "#f59e0b",
+            borderWidth: 2,
+            borderDash: [5, 3],
+            pointRadius: 4,
+            pointBackgroundColor: "#f59e0b",
+          },
+          {
+            label: "10th percentile",
+            data: [{x: 60, y: 0.0006724439444951713},{x: 61, y: 0.0006051231757737696},{x: 62, y: 0.0005477240774780512}],
+            borderColor: "#ef4444",
+            borderWidth: 1,
+            borderDash: [3, 3],
+            pointRadius: 3,
+          },
+          {
+            label: "90th percentile",
+            data: [{x: 60, y: 0.0007760299486108124},{x: 61, y: 0.0007317411946132779},{x: 62, y: 0.0006997195305302739}],
+            borderColor: "#22c55e",
+            borderWidth: 1,
+            borderDash: [3, 3],
+            pointRadius: 3,
+          },
+          {
+            label: "Actual (what happened)",
+            data: [{x: 60, y: 0.000705},{x: 61, y: 0.000678},{x: 62, y: 0.000651}],
+            borderColor: "#a78bfa",
+            borderWidth: 2,
+            pointRadius: 5,
+            pointBackgroundColor: "#a78bfa",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        parsing: false,
+        plugins: {
+          legend: { labels: { color: "#94a3b8", font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                return ` ${ctx.dataset.label}: ${v < 0.001 ? v.toExponential(4) : "$" + v.toFixed(8)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { type: "linear", grid: { color: gridColor }, ticks: { color: tickColor,
+            callback: v => v < 60 ? `C${v}` : `+${(v-60+1)*5}m`
+          }},
+          y: { grid: { color: gridColor }, ticks: { color: tickColor,
+            callback: v => v < 0.001 ? v.toExponential(2) : "$" + v.toFixed(6)
+          }},
+        },
+        annotation: {
+          annotations: { line1: { type: "line", xMin: 59.5, xMax: 59.5,
+            borderColor: "#334155", borderWidth: 2
+          }}
+        }
+      },
+    });
+
+    // ── RSI chart ──
+    new Chart(document.getElementById("rsiChart"), {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "RSI(8)",
+            data: [{x: 0, y: 60},{x: 1, y: 60},{x: 2, y: 60},{x: 3, y: 60},{x: 4, y: 60},{x: 5, y: 60},{x: 6, y: 60},{x: 7, y: 60},{x: 8, y: 60},{x: 9, y: 100},{x: 10, y: 100},{x: 11, y: 100},{x: 12, y: 100},{x: 13, y: 100},{x: 14, y: 100},{x: 15, y: 100},{x: 16, y: 100},{x: 17, y: 100},{x: 18, y: 100},{x: 19, y: 100},{x: 20, y: 100},{x: 21, y: 100},{x: 22, y: 100},{x: 23, y: 100},{x: 24, y: 100},{x: 25, y: 100},{x: 26, y: 100},{x: 27, y: 100},{x: 28, y: 100},{x: 29, y: 100},{x: 30, y: 100},{x: 31, y: 100},{x: 32, y: 100},{x: 33, y: 100},{x: 34, y: 100},{x: 35, y: 100},{x: 36, y: 100},{x: 37, y: 100},{x: 38, y: 100},{x: 39, y: 100},{x: 40, y: 100},{x: 41, y: 100},{x: 42, y: 100},{x: 43, y: 100},{x: 44, y: 87.23136993536934},{x: 45, y: 76.47927147158936},{x: 46, y: 67.45777339031241},{x: 47, y: 59.72785329369751},{x: 48, y: 53.15363210212459},{x: 49, y: 47.448258667327764},{x: 50, y: 42.549823971340565},{x: 51, y: 38.19151464978275},{x: 52, y: 34.433924333200295},{x: 53, y: 31.067604048657586},{x: 54, y: 28.105216151884605},{x: 55, y: 25.493732080940248},{x: 56, y: 23.093555597217232},{x: 57, y: 20.98307456316111},{x: 58, y: 19.124951496614756},{x: 59, y: 17.40730620833837}],
+            borderColor: "#60a5fa",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        parsing: false,
+        plugins: {
+          legend: { labels: { color: "#94a3b8", font: { size: 11 } } },
+          annotation: {
+            annotations: {
+              ob: { type: "line", yMin: 70, yMax: 70, borderColor: "#ef444480", borderWidth: 1, borderDash: [4,4] },
+              os: { type: "line", yMin: 30, yMax: 30, borderColor: "#22c55e80", borderWidth: 1, borderDash: [4,4] },
+            }
+          }
+        },
+        scales: {
+          x: { type: "linear", grid: { color: gridColor }, ticks: { color: tickColor, callback: v => `C${v}` }},
+          y: { min: 0, max: 100, grid: { color: gridColor }, ticks: { color: tickColor }},
+        },
+      },
+    });
+  </script>
+</body>
+</html>

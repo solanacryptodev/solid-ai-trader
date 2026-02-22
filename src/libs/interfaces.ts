@@ -1,3 +1,5 @@
+import type { Accessor } from "solid-js";
+
 export interface TokenData {
   address: string;
   symbol: string;
@@ -71,7 +73,7 @@ export interface WatchlistModalProps {
   copied: boolean;
   shouldShowFallback: (id: string, icon: string) => boolean;
   handleImageError: (id: string) => void;
-  onAnalyze?: (token: WatchlistItem) => void;
+  onAnalyze?: ((token: WatchlistItem) => void) | Accessor<((token: WatchlistItem) => void) | undefined>;
 }
 
 // ── Price Store Types ────────────────────────────────────────────────────────

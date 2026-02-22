@@ -57,7 +57,7 @@ function AppContent(props: { children?: any }) {
           copied={copied()}
           shouldShowFallback={shouldShowFallback}
           handleImageError={handleImageError}
-          onAnalyze={onAnalyze()}
+          onAnalyze={() => onAnalyze()}
         />
       </Show>
     </>
