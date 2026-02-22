@@ -76,6 +76,15 @@ export interface WatchlistModalProps {
   onAnalyze?: ((token: WatchlistItem) => void) | Accessor<((token: WatchlistItem) => void) | undefined>;
 }
 
+// Potential token type - tokens selected from Watchlist for further analysis
+export interface PotentialToken {
+  id: string;
+  name: string;
+  symbol: string;
+  icon: string;
+  address: string;
+}
+
 // ── Price Store Types ────────────────────────────────────────────────────────
 
 export interface PriceSample {

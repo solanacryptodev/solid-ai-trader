@@ -31,10 +31,11 @@ function getApiKey(): string {
  * System prompt for the Orchestrator Agent
  */
 const ORCHESTRATOR_SYSTEM_PROMPT = `You are the Orchestrator Agent for a cryptocurrency trading system.
-Your role is to analyze tokens and coordinate analysis across multiple specialized sub-agents.
+Your role is to assign token analysis tasks to sub-agents. You are NOT to use general-purpose sub-agents types.
+Only assign roles to available subagents based on the task at hand. All social media related tasks must use the social sub-agent.
 
 Available sub-agents:
-- social: Analyzes social media sentiment (Twitter/X)
+- social: Use the social sub-agent for all social media analysis tasks.
 - chart: Performs technical analysis on price charts
 - model: Uses ML models (Chronos) for price predictions
 - security: Performs security checks (rug detection)
@@ -105,7 +106,7 @@ async function getDeepAgent(): Promise<any> {
         description: "Analyze social media sentiment for a cryptocurrency token. Input: JSON object with address, symbol, and name of the token.",
         func: async (input: string): Promise<string> => {
             try {
-                // console.log("Social analysis tool input:", input);
+                console.log("Social analysis tool input:", input);
                 // Parse and validate input using Zod
                 const parsedInput = JSON.parse(input);
                 const tokenData = TokenInputSchema.parse(parsedInput);
@@ -118,9 +119,9 @@ async function getDeepAgent(): Promise<any> {
                 };
 
                 // Call the actual SocialAgent analyzeToken function
-                // console.log("Social analysis tool input:", token);
+                console.log("Social analysis tool input:", token);
                 const result: SocialAgentResult = await analyzeToken(token);
-                // console.log("Social analysis tool result:", result);
+                console.log("Social analysis tool result:", result);
 
                 return JSON.stringify(result);
             } catch (error) {
@@ -300,7 +301,7 @@ export async function POST({ request }: APIEvent) {
             ],
             todos: [], // Initialize empty todos for the todoListMiddleware
         });
-        // console.log("DeepAgent response", response);
+        console.log("DeepAgent response", response);
 
         // Extract the SocialAgent result from the DeepAgent response
         // The tool returns the full SocialAgentResult structure

@@ -1,7 +1,7 @@
 import { For, createSignal, onMount, onCleanup, Show, createEffect } from "solid-js";
 import { useGlobalModal } from "~/libs/context/GlobalModalContext";
 
-// Props interface for Watchlist
+// Props interface for Watchlist - onAnalyze is deprecated, use GlobalPotentialsContext instead
 interface WatchlistProps {
   onAnalyze?: (token: WatchlistItem) => void;
 }

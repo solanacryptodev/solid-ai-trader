@@ -2,6 +2,7 @@ import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense, Show, createSignal } from "solid-js";
 import { GlobalModalProvider, useGlobalModal } from "~/libs/context/GlobalModalContext";
+import { GlobalPotentialsProvider } from "~/libs/context/GlobalPotentialsContext";
 import WatchlistModal from "~/components/dashboard/WatchlistModal";
 import Nav from "~/components/Nav";
 import "./app.css";
@@ -66,10 +67,12 @@ function AppContent(props: { children?: any }) {
 
 export default function App() {
   return (
-    <GlobalModalProvider>
-      <Router root={AppContent}>
-        <FileRoutes />
-      </Router>
-    </GlobalModalProvider>
+    <GlobalPotentialsProvider>
+      <GlobalModalProvider>
+        <Router root={AppContent}>
+          <FileRoutes />
+        </Router>
+      </GlobalModalProvider>
+    </GlobalPotentialsProvider>
   );
 }
