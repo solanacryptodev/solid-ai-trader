@@ -106,7 +106,7 @@ async function getDeepAgent(): Promise<any> {
         description: "Analyze social media sentiment for a cryptocurrency token. Input: JSON object with address, symbol, and name of the token.",
         func: async (input: string): Promise<string> => {
             try {
-                console.log("Social analysis tool input:", input);
+                // console.log("Social analysis tool input:", input);
                 // Parse and validate input using Zod
                 const parsedInput = JSON.parse(input);
                 const tokenData = TokenInputSchema.parse(parsedInput);
@@ -119,9 +119,9 @@ async function getDeepAgent(): Promise<any> {
                 };
 
                 // Call the actual SocialAgent analyzeToken function
-                console.log("Social analysis tool input:", token);
+                // console.log("Social analysis tool input:", token);
                 const result: SocialAgentResult = await analyzeToken(token);
-                console.log("Social analysis tool result:", result);
+                // console.log("Social analysis tool result:", result);
 
                 return JSON.stringify(result);
             } catch (error) {
@@ -301,7 +301,7 @@ export async function POST({ request }: APIEvent) {
             ],
             todos: [], // Initialize empty todos for the todoListMiddleware
         });
-        console.log("DeepAgent response", response);
+        // console.log("DeepAgent response", response);
 
         // Extract the SocialAgent result from the DeepAgent response
         // The tool returns the full SocialAgentResult structure
@@ -344,7 +344,7 @@ export async function POST({ request }: APIEvent) {
                     trending: false,
                 };
 
-                console.log('Parsed social result:', socialResult);
+                // console.log('Parsed social result:', socialResult);
             }
         } catch (e) {
             console.error('Failed to extract social result:', e);

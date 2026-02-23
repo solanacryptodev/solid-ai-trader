@@ -2,15 +2,50 @@
  * Potentials.tsx
  * Display for tokens selected from Watchlist via DeepAgent analysis
  * Shows: image/icon, name, symbol
- * Uses GlobalPotentialsContext to manage tokens
+ * Uses GlobalPotentialsContext to manage tokens.
+ *
+ * When a token is added to Potentials it is immediately registered with the
+ * server-side priceStore via POST /api/tokens so price polling begins.
  */
 
-import { For, Show } from "solid-js";
+import { For, Show, createEffect, onMount } from "solid-js";
 import { useGlobalPotentials } from "~/libs/context/GlobalPotentialsContext";
+
+/** Register a token with the server-side priceStore */
+async function registerWithPriceStore(mintAddress: string, label: string) {
+    if (!mintAddress) return;
+    try {
+        await fetch("/api/tokens", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mintAddress, label }),
+        });
+    } catch (err) {
+        console.error("[Potentials] Failed to register token with priceStore:", err);
+    }
+}
 
 export default function Potentials() {
     const { potentials, removePotential } = useGlobalPotentials();
-    // console.log("Potentials in Potentials.tsx:", potentials());
+
+    // Track which addresses we've already registered to avoid duplicate POSTs
+    const registered = new Set<string>();
+
+    /** Register all tokens that haven't been sent yet */
+    function syncPotentials() {
+        for (const token of potentials()) {
+            if (token.address && !registered.has(token.address)) {
+                registered.add(token.address);
+                registerWithPriceStore(token.address, token.symbol);
+            }
+        }
+    }
+
+    // Register any tokens already in the list when the component mounts
+    onMount(syncPotentials);
+
+    // Register new tokens whenever the potentials list changes
+    createEffect(syncPotentials);
 
     return (
         <div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
