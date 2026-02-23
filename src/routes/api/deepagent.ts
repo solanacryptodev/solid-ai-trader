@@ -31,10 +31,11 @@ function getApiKey(): string {
  * System prompt for the Orchestrator Agent
  */
 const ORCHESTRATOR_SYSTEM_PROMPT = `You are the Orchestrator Agent for a cryptocurrency trading system.
-Your role is to analyze tokens and coordinate analysis across multiple specialized sub-agents.
+Your role is to assign token analysis tasks to sub-agents. You are NOT to use general-purpose sub-agents types.
+Only assign roles to available subagents based on the task at hand. All social media related tasks must use the social sub-agent.
 
 Available sub-agents:
-- social: Analyzes social media sentiment (Twitter/X)
+- social: Use the social sub-agent for all social media analysis tasks.
 - chart: Performs technical analysis on price charts
 - model: Uses ML models (Chronos) for price predictions
 - security: Performs security checks (rug detection)
@@ -343,7 +344,7 @@ export async function POST({ request }: APIEvent) {
                     trending: false,
                 };
 
-                console.log('Parsed social result:', socialResult);
+                // console.log('Parsed social result:', socialResult);
             }
         } catch (e) {
             console.error('Failed to extract social result:', e);

@@ -5,6 +5,7 @@ dist
 .netlify
 .vinxi
 app.config.timestamp_*.js
+/reports
 
 # Environment
 .env
@@ -27,3 +28,4 @@ gitignore
 .DS_Store
 Thumbs.db
 pnpm-lock.yaml
+tsc_output.txt

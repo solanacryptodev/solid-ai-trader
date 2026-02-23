@@ -29,6 +29,7 @@ export async function GET(_event: APIEvent) {
         candleCount: s.candles.length,
         sampleCount: s.samples.length,
         lastUpdated: s.lastUpdated,
+        signalStatus: s.signalStatus,
         // Sparkline: last 20 close prices
         sparkline: s.candles.slice(-20).map((c) => c.close),
     }));

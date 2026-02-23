@@ -1,6 +1,7 @@
 import { Show, createSignal, For } from "solid-js";
 import type { SocialAgentResult } from "~/agent/types";
-import { WatchlistModalProps } from "~/libs/interfaces"
+import { WatchlistModalProps } from "~/libs/interfaces";
+import { useGlobalPotentials } from "~/libs/context/GlobalPotentialsContext";
 
 function formatHolders(holders?: number): string {
     if (!holders) return "-";
@@ -18,6 +19,9 @@ function getScoreColor(score?: number): string {
 }
 
 export default function WatchlistModal(props: WatchlistModalProps) {
+    // Get the potentials context for adding tokens after analysis
+    const { addPotentialFromWatchlist } = useGlobalPotentials();
+
     // Analysis state
     const [analyzing, setAnalyzing] = createSignal(false);
     const [analysisResult, setAnalysisResult] = createSignal<SocialAgentResult | null>(null);
@@ -29,6 +33,8 @@ export default function WatchlistModal(props: WatchlistModalProps) {
         setAnalyzing(true);
         setAnalysisError(null);
         setAnalysisResult(null);
+        // Add token to potentials via global context
+        addPotentialFromWatchlist(props.token);
 
         try {
             // Call the server-side DeepAgent API endpoint (Orchestrator)
@@ -102,11 +108,6 @@ export default function WatchlistModal(props: WatchlistModalProps) {
             } else {
                 // Fallback: if no structured result, try to use the raw response
                 setAnalysisResult(data.results || data.response || data);
-            }
-
-            // Also notify parent component if callback provided
-            if (props.onAnalyze) {
-                props.onAnalyze(props.token);
             }
         } catch (error) {
             setAnalysisError(error instanceof Error ? error.message : "Analysis failed");
