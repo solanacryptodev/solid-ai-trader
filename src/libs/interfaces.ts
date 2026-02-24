@@ -1,4 +1,5 @@
 import type { Accessor } from "solid-js";
+import { ObjectId } from "mongodb";
 
 export interface TokenData {
   address: string;
@@ -164,4 +165,105 @@ export interface TokenState {
    * Examples: "building 8/18", "warming 22/25", "ready"
    */
   signalStatus: string;
+}
+
+// ── MongoDB Trade Record ─────────────────────────────────────────────────────
+
+export interface TradeRecord {
+  _id?: ObjectId;
+
+  // Identity
+  token: string;       // human label e.g. "MENCHO"
+  mintAddress: string;       // Solana mint
+  timestamp: Date;         // entry time
+
+  // Entry conditions — what triggered the trade
+  entryPrice: number;
+  entryRSI: number;
+  entryDirection: "bullish" | "bearish" | "neutral";
+  entryConfidence: number;       // 0-1
+  entrySignal: string;       // e.g. "oversold_bullish"
+  volumeAtEntry: number;       // USD liquidity at entry
+  candleCount: number;       // token maturity at entry
+  isLowVolume: boolean;      // flagged as low volume trade
+
+  // Exit conditions — populated when trade closes
+  exitPrice?: number;
+  exitTime?: Date;
+  exitReason?: "chronos_bearish" | "rsi_overbought" | "time_limit" | "stop_loss" | "manual";
+  holdMinutes?: number;
+
+  // Outcome — populated when trade closes
+  pnlPct?: number;       // % gain/loss
+  profitable?: boolean;
+
+  // Devnet vs mainnet
+  network: "devnet" | "mainnet";
+}
+
+// ── MongoDB Signal Record ────────────────────────────────────────────────────
+
+export interface SignalRecord {
+  _id?: ObjectId;
+  timestamp: Date;
+  token: string;
+  mintAddress: string;
+
+  // Signal details
+  signal: "BUY" | "SELL" | "WAIT";
+  direction: "bullish" | "bearish" | "neutral";
+  confidence: number;       // 0-1
+  rsi: number;
+  rsiSignal: "oversold" | "overbought" | "neutral";
+  candleCount: number;
+
+  // Was this signal acted on?
+  tradeEntered: boolean;
+  skipReason?: string;       // why we didn't trade e.g. "low_confidence"
+}
+
+// ── MongoDB Forecast Record ──────────────────────────────────────────────────
+
+export interface ForecastRecord {
+  _id?: ObjectId;
+  timestamp: Date;
+  token: string;
+  mintAddress: string;
+
+  // Chronos output
+  direction: "bullish" | "bearish" | "neutral";
+  confidence: number;
+  pctChange: number;
+  covariatesUsed: string[];
+
+  // Quantile forecasts
+  forecasts: {
+    low: number;
+    median: number;
+    high: number;
+  }[];
+
+  // Actual outcome — filled in retrospectively
+  actualPrices?: number[];     // what price actually did
+  accurate?: boolean;      // did direction call match?
+}
+
+// ── MongoDB Performance Summary ──────────────────────────────────────────────
+
+export interface PerformanceSummary {
+  totalTrades: number;
+  winRate: number;   // 0-1
+  avgWinPct: number;
+  avgLossPct: number;
+  avgHoldMinutes: number;
+  avgEntryConfidence: number;
+  bestTrade: number;
+  worstTrade: number;
+
+  // Breakdowns the agent uses for rule tuning
+  lowVolumeWinRate: number;
+  highConfWinRate: number;   // confidence > 0.85
+  byExitReason: {
+    [reason: string]: { count: number; avgPnl: number };
+  };
 }

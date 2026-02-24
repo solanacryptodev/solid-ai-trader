@@ -20,6 +20,7 @@
     "@types/node": "^25.2.3",
     "deepagents": "^1.7.6",
     "langchain": "^1.2.24",
+    "mongodb": "^7.1.0",
     "solid-js": "^1.9.5",
     "vinxi": "^0.5.7",
     "zod": "^4.3.6"
