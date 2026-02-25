@@ -13,10 +13,8 @@ if (openAiKey && !process.env.OPENAI_API_KEY) {
 
 import type { APIEvent } from "@solidjs/start/server";
 import type { TokenInput, SocialAgentResult } from "~/agent/types";
-import { SubAgent } from "deepagents";
-import { z } from "zod";
-import { analyzeToken } from "~/server/agents/SocialAgent";
 import { SystemMessage, HumanMessage } from "langchain";
+import { orchestratorAgent } from "~/agent/agents";
 
 /**
  * Get API key from environment (server-side)
@@ -25,226 +23,6 @@ import { SystemMessage, HumanMessage } from "langchain";
 function getApiKey(): string {
     // First try server-only env var (优先检查服务器专用环境变量)
     return import.meta.env.OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY || "";
-}
-
-/**
- * System prompt for the Orchestrator Agent
- */
-const ORCHESTRATOR_SYSTEM_PROMPT = `You are the Orchestrator Agent for a cryptocurrency trading system.
-Your role is to assign token analysis tasks to sub-agents. You are NOT to use general-purpose sub-agents types.
-Only assign roles to available subagents based on the task at hand. All social media related tasks must use the social sub-agent.
-
-Available sub-agents:
-- social: Use the social sub-agent for all social media analysis tasks.
-- chart: Performs technical analysis on price charts
-- model: Uses ML models (Chronos) for price predictions
-- security: Performs security checks (rug detection)
-- execution: Determines trade execution recommendations
-
-For each token analysis:
-1. Gather data from relevant sub-agents
-2. Synthesize the results
-3. Provide a final trading recommendation (BUY, SELL, HOLD)
-4. Include confidence scores and reasoning
-
-Always prioritize risk management and security checks.`;
-
-const SOCIAL_AGENT_PROMPT = `You are the Social Agent. Analyze social media sentiment for a cryptocurrency token.
-Search Twitter for mentions and analyze the sentiment. Provide:
-- Sentiment score (-1 to 1)
-- Sentiment label (bullish/bearish/neutral)
-- Confidence (0-1)
-- Key themes discussed
-- Whether the token is trending`;
-
-/**
- * Lazy-initialized DeepAgent instance (server-side only)
- * Uses dynamic imports to prevent bundling to client
- */
-let orchestratorAgent: any = null;
-
-/**
- * Initialize the DeepAgent instance (server-side)
- */
-async function getDeepAgent(): Promise<any> {
-    if (orchestratorAgent) {
-        return orchestratorAgent;
-    }
-
-    const apiKey = getApiKey();
-
-    if (!apiKey) {
-        throw new Error("OpenAI API key not available on server");
-    }
-
-    // Dynamic imports - only loads on server
-    const { createDeepAgent } = await import("deepagents");
-    const { ChatOpenAI } = await import("@langchain/openai");
-    const { DynamicTool } = await import("langchain");
-
-    const model = new ChatOpenAI(
-        {
-            modelName: "qwen/qwen3.5-397b-a17b",
-            temperature: 0.3,
-            maxTokens: 500,
-            apiKey: apiKey,
-            configuration: {
-                baseURL: "https://openrouter.ai/api/v1",
-            },
-        });
-
-    // Zod schema for token input validation
-    const TokenInputSchema = z.object({
-        address: z.string().optional(),
-        symbol: z.string().optional(),
-        name: z.string().optional(),
-    });
-
-    // Create the Social Agent tool that wraps analyzeToken from SocialAgent.ts
-    const socialAnalysisTool = new DynamicTool({
-        name: "analyze_social",
-        description: "Analyze social media sentiment for a cryptocurrency token. Input: JSON object with address, symbol, and name of the token.",
-        func: async (input: string): Promise<string> => {
-            try {
-                // console.log("Social analysis tool input:", input);
-                // Parse and validate input using Zod
-                const parsedInput = JSON.parse(input);
-                const tokenData = TokenInputSchema.parse(parsedInput);
-
-                // Create TokenInput object
-                const token: TokenInput = {
-                    address: tokenData.address || "",
-                    symbol: tokenData.symbol || "",
-                    name: tokenData.name || "",
-                };
-
-                // Call the actual SocialAgent analyzeToken function
-                // console.log("Social analysis tool input:", token);
-                const result: SocialAgentResult = await analyzeToken(token);
-                // console.log("Social analysis tool result:", result);
-
-                return JSON.stringify(result);
-            } catch (error) {
-                console.error("Social analysis tool error:", error);
-                return JSON.stringify({
-                    agentName: "SocialAgent",
-                    success: false,
-                    timestamp: Date.now(),
-                    error: error instanceof Error ? error.message : "Analysis failed",
-                    tweets: [],
-                    sentiment: {
-                        score: 0,
-                        label: "neutral",
-                        confidence: 0,
-                        keyThemes: [],
-                    },
-                    mentions: 0,
-                    trending: false,
-                });
-            }
-        },
-    });
-
-    const chartAnalysisTool = new DynamicTool({
-        name: "analyze_chart",
-        description: "Perform technical analysis on a cryptocurrency token.",
-        func: async (): Promise<string> => {
-            return JSON.stringify({
-                agentName: "ChartAgent",
-                success: true,
-                timestamp: Date.now(),
-                signals: [],
-                indicators: [],
-                pattern: null,
-            });
-        },
-    });
-
-    const modelAnalysisTool = new DynamicTool({
-        name: "analyze_model",
-        description: "Get ML model predictions for a cryptocurrency token.",
-        func: async (): Promise<string> => {
-            return JSON.stringify({
-                agentName: "ModelAgent",
-                success: true,
-                timestamp: Date.now(),
-                predictions: null,
-                confidence: 0,
-            });
-        },
-    });
-
-    const securityAnalysisTool = new DynamicTool({
-        name: "analyze_security",
-        description: "Perform security checks on a cryptocurrency token.",
-        func: async (): Promise<string> => {
-            return JSON.stringify({
-                agentName: "SecurityAgent",
-                success: true,
-                timestamp: Date.now(),
-                rugCheck: {
-                    isHoneypot: false,
-                    mintAuthority: null,
-                    riskLevel: "low",
-                    top10HolderPercent: 0,
-                },
-                riskScore: 0,
-            });
-        },
-    });
-
-    const executionAnalysisTool = new DynamicTool({
-        name: "analyze_execution",
-        description: "Generate trade execution recommendation based on all agent results.",
-        func: async (): Promise<string> => {
-            return JSON.stringify({
-                agentName: "ExecutionAgent",
-                success: true,
-                timestamp: Date.now(),
-                recommendation: "HOLD",
-                reasoning: "Analysis complete",
-                confidence: 0.5,
-            });
-        },
-    });
-
-    const orchestratorTools = [
-        socialAnalysisTool,
-        chartAnalysisTool,
-        modelAnalysisTool,
-        securityAnalysisTool,
-        executionAnalysisTool,
-    ];
-
-    const socialModel = new ChatOpenAI(
-        {
-            modelName: "qwen/qwen3.5-397b-a17b",
-            temperature: 0.3,
-            maxTokens: 500,
-            apiKey: apiKey,
-            configuration: {
-                baseURL: "https://openrouter.ai/api/v1",
-            },
-        });
-
-
-    const socialSubAgent: SubAgent = ({
-        name: "Social Agent",
-        model: socialModel,
-        systemPrompt: SOCIAL_AGENT_PROMPT,
-        description: "Social agent for analyzing social media sentiment for tokens",
-        tools: [socialAnalysisTool],
-    });
-
-    // Create the Orchestrator Agent
-    orchestratorAgent = createDeepAgent({
-        model,
-        subagents: [socialSubAgent],
-        systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
-        name: "Trading Orchestrator",
-    });
-
-    return orchestratorAgent;
 }
 
 /**
@@ -279,8 +57,7 @@ export async function POST({ request }: APIEvent) {
             );
         }
 
-        const agent = await getDeepAgent();
-        //console.log("DeepAgent initialized", agent);
+        const agent = await orchestratorAgent.getAgent();
 
         const prompt = `Analyze the token ${token.symbol} (${token.name}) at address ${token.address || 'unknown'}.
             Run analysis using these agents: ${agents.join(", ")}.
@@ -301,7 +78,6 @@ export async function POST({ request }: APIEvent) {
             ],
             todos: [], // Initialize empty todos for the todoListMiddleware
         });
-        // console.log("DeepAgent response", response);
 
         // Extract the SocialAgent result from the DeepAgent response
         // The tool returns the full SocialAgentResult structure
@@ -343,8 +119,6 @@ export async function POST({ request }: APIEvent) {
                     mentions: 0,
                     trending: false,
                 };
-
-                // console.log('Parsed social result:', socialResult);
             }
         } catch (e) {
             console.error('Failed to extract social result:', e);
