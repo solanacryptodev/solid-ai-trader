@@ -266,4 +266,6 @@ export function isLowVolume(stats: TokenStats): boolean {
     return totalVolume < 25_000 || stats.numOrganicBuyers < 15;
 }
 
+// TODO: Add Jupiter swap functionality to buy and sell tokens
+
 export const jupiter = new JupiterClient();

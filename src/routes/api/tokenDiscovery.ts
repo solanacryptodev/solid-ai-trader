@@ -116,7 +116,7 @@ export async function GET({ request }: APIEvent) {
                     const candidate = await scanner.analyzeToken(mint);
                     // console.log("[TokenDiscovery] Candidate result:", candidate);
 
-                    if (candidate && candidate.holders >= 400 && candidate.holders <= 2000) {
+                    if (candidate && candidate.holders >= 400 && candidate.holders <= 3000) {
                         // Filter: require at least 100 total trades (numBuys + numSells)
                         if (!hasMinimumTrades(candidate.address, interval)) {
                             continue;
